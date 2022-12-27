@@ -2,13 +2,8 @@
 //! Created by Mokshya Protocol
 module suistaking::tokenstaking
 {
-    use std::string::{Self,String};
-    use std::vector;
-    use std::hash;
-    use std::bcs;
     use sui::object::{Self, UID,ID};
     use sui::transfer;
-    use sui::sui::SUI;
     use sui::balance::{Self,Balance};
     use sui::coin::{Self, Coin};
     use sui::tx_context::{Self, TxContext};
@@ -23,11 +18,10 @@ module suistaking::tokenstaking
         //the balance of coin to be distributed
         amount:Balance<T>,
     }
-     struct AdminCap has key, store {
+    struct AdminCap has key, store {
         id: UID,
         obj_id: ID,
     }
-
     struct MokshyaReward<phantom T> has key {
         id:UID,
         //staker
@@ -39,6 +33,7 @@ module suistaking::tokenstaking
         //time
         start_time:u64,
     }
+
     const ENO_NO_COLLECTION:u64=0;
     const ENO_STAKING_EXISTS:u64=1;
     const ENO_NO_STAKING:u64=2;
@@ -53,11 +48,10 @@ module suistaking::tokenstaking
     //Functions
 
     //Function for creating and modifying staking
-    public entry fun create_staking<T,D>(
-        ctx: &mut TxContext,
+    public entry fun create_staking<T,D>(       
         dpr:u64,//rate of payment,
         balance:Coin<T>,
-        stake_coin: Coin<D>
+        ctx: &mut TxContext,
     )
     {
         let sender = tx_context::sender(ctx);
@@ -72,11 +66,11 @@ module suistaking::tokenstaking
     }
     //Functions for staking 
     public entry fun stake_token<T,P>(
-        ctx: &mut TxContext,
         coin: Coin<T>,
-        staking: &MokshyaStaking<P>,
-        sender: address,
-        amount:u64,
+        _staking: &MokshyaStaking<P>,
+        _sender: address,
+        _amount:u64,
+         ctx: &mut TxContext,
     )
     {
         let staker = tx_context::sender(ctx);
@@ -93,37 +87,37 @@ module suistaking::tokenstaking
     }
 
     public entry fun receiver_reward<T,P>(
-        ctx: &mut TxContext,
+        
         staking: &mut MokshyaStaking<T>,
         reward: &mut MokshyaReward<P>,
-        sender: address,
+        _sender: address,
+        ctx: &mut TxContext,
     )
     {
         let staker = tx_context::sender(ctx);
         let now = 200000;
-        let value = balance::value( reward.amount);
+        let value = balance::value(&reward.amount);
         let payable_amount = ((now-reward.start_time)*value)/86400-reward.withdraw_amount;
-        transfer::transfer(coin::take(staking.amount, payable_amount, ctx), staker);
+        transfer::transfer(coin::take(&mut staking.amount, payable_amount, ctx), staker);
         reward.withdraw_amount= reward.withdraw_amount+payable_amount;
 
     }
-    public entry fun unstake_fund(
+    public entry fun unstake_fund<T,P>(
+    
+        staking: &mut MokshyaStaking<T>,
+        reward: &mut MokshyaReward<P>,
+        _sender: address,
         ctx: &mut TxContext,
-        staking: &mut MokshyaStaking,
-        reward: &mut MokshyaReward,
-        sender: address,
     )
     {
         let staker = tx_context::sender(ctx);
-        let total_amount = staking.amount; 
         let now = 200000;
-        let staked_amount = reward.amount;
-        let value = Balance::value(staked_amount);
+        let value = balance::value(&reward.amount);
         let payable_amount = ((now-reward.start_time)*value)/86400-reward.withdraw_amount;
-        transfer::transfer(coin::take(total_amount, payable_amount, ctx), staker);
+        transfer::transfer(coin::take(&mut staking.amount, payable_amount, ctx), staker);
         reward.withdraw_amount= reward.withdraw_amount+payable_amount;
         // transferring all the staked coins to the staker
-          transfer::transfer(coin::take(staked_amount, value, ctx), staker);
+        transfer::transfer(coin::take(&mut reward.amount, value, ctx), staker);
     }
 }
 
